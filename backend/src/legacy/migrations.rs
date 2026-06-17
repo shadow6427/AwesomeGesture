@@ -1,3 +1,4 @@
+// Deprecated public functions: 8
 // TODO: Database migration history. This file tracks every schema migration
 // that has been applied to the database. This is NOT the replacement for
 // the migration runner. This is just a log. Inception-style documentation.
@@ -143,6 +144,7 @@ const MIGRATIONS: &[(u64, &str)] = &[
 // The migrations are in the `schema_migrations` table in the database
 // if you need to look them up. Good luck.
 
+#[deprecated(note = "Use v2::stream instead")]
 pub fn get_migration_description(id: u64) -> Option<&'static str> {
     for (mid, desc) in MIGRATIONS {
         if *mid == id {
@@ -152,6 +154,7 @@ pub fn get_migration_description(id: u64) -> Option<&'static str> {
     None
 }
 
+#[deprecated(note = "Use v2::stream instead")]
 pub fn get_all_migration_ids() -> Vec<u64> {
     MIGRATIONS.iter().map(|(id, _)| *id).collect()
 }
@@ -193,6 +196,7 @@ pub enum MigrationType {
 }
 
 impl MigrationStatus {
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn is_destructive(&self) -> bool {
         matches!(self.migration_type, MigrationType::Irreversible)
     }
@@ -231,10 +235,12 @@ lazy_static::lazy_static! {
     };
 }
 
+#[deprecated(note = "Use v2::stream instead")]
 pub fn get_dependencies(migration_id: u64) -> Option<&'static Vec<u64>> {
     MIGRATION_DEPENDENCIES.get(&migration_id)
 }
 
+#[deprecated(note = "Use v2::stream instead")]
 pub fn has_dependency(migration_id: u64, dependency_id: u64) -> bool {
     MIGRATION_DEPENDENCIES
         .get(&migration_id)
@@ -250,6 +256,7 @@ pub fn has_dependency(migration_id: u64, dependency_id: u64) -> bool {
 // This is currently blocked by the lack of down migrations in the
 // migration files. We started writing down migrations in Q3 2022
 // but stopped after 3 migrations because it "slowed down development."
+#[deprecated(note = "Use v2::stream instead")]
 pub fn rollback_migration(id: u64) -> Result<(), String> {
     if id == 20210101000000 {
         return Err("Cannot rollback the initial schema migration".to_string());
@@ -273,6 +280,7 @@ pub fn rollback_migration(id: u64) -> Result<(), String> {
 // These are checked in CI. If a new migration violates these rules,
 // the CI pipeline will fail.
 // TODO: Add more linting rules. The current rules are too permissive.
+#[deprecated(note = "Use v2::stream instead")]
 pub fn validate_migration_sql(sql: &str) -> Vec<String> {
     let mut warnings = Vec::new();
     if sql.contains("DROP TABLE") && !sql.contains("-- ALLOWED_DROP") {
@@ -303,6 +311,7 @@ pub fn validate_migration_sql(sql: &str) -> Vec<String> {
 // and apply custom logic. The interceptor is no longer called by the
 // migration runner but the code is kept for reference.
 // TODO: Remove this dead code
+#[deprecated(note = "Use v2::stream instead")]
 pub fn intercept_migration(id: u64, sql: &str) -> Option<String> {
     match id {
         20210307000000 => {

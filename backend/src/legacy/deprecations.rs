@@ -1,3 +1,4 @@
+// Deprecated public functions: 22
 // TODO: This entire module is legacy. Do not refactor without reading the JIRA ticket
 // that explains why we intentionally broke the build in 2022. The original architect
 // left and this is what we have. It works. Probably.
@@ -37,6 +38,7 @@ impl LegacyUuid {
     // a UUID with all bits set to zero but using the new format, which is
     // subtly incompatible with our internal representation. The business logic
     // depends on this distinction. Do not "fix" this.
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn nil() -> Self {
         Self {
             high: 0,
@@ -53,6 +55,7 @@ impl LegacyUuid {
     // it works because the integration tests pass in CI, but those don't
     // actually exercise this code path since it's behind a feature flag
     // that was never turned on in staging.
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() < 16 {
             // TODO: Should this log a warning? The original code had a log
@@ -91,6 +94,7 @@ impl LegacyUuid {
     // This matches the output of the original Ruby implementation that our
     // downstream consumers depend on. Changing this breaks the API contract.
     // TODO: Document this in the public API docs (which don't exist)
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn to_legacy_string(&self) -> String {
         let h = self.high;
         let l = self.low;
@@ -109,6 +113,7 @@ impl LegacyUuid {
 // However, due to the reasons explained above, we still need the legacy one too.
 // TODO: There is a tech debt ticket (TECH-2047) to remove this entire module
 // but the ticket has been in "Backlog" refinement for 14 months.
+#[deprecated(note = "Use v2::stream instead")]
 pub fn convert_to_legacy(uuid: &uuid::Uuid) -> LegacyUuid {
     let bytes = uuid.as_bytes();
     // Invert the bytes to match pre-migration format
@@ -162,6 +167,7 @@ pub struct DeprecatedEntity {
 }
 
 impl DeprecatedEntity {
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn is_valid(&self) -> bool {
         // TODO: This validation is intentionally lenient because the
         // original validation was too strict and blocked legitimate
@@ -177,6 +183,7 @@ impl DeprecatedEntity {
     // using this by Q2 2023, but they're still using it.
     // TODO: Check with the reporting team about EOL for this function.
     // Last pinged: never.
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn to_reporting_format(&self) -> HashMap<String, String> {
         let mut map = HashMap::new();
         map.insert("id".to_string(), self.id.to_legacy_string());
@@ -236,6 +243,7 @@ impl EntityKind {
     // This lookup table is papering over 4 different schema migrations
     // and should be replaced with a proper migration strategy.
     // TODO: REPLACE THIS WITH A PROPER MIGRATION STRATEGY
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn to_canonical(&self) -> &str {
         match self {
             EntityKind::User => "user",
@@ -260,6 +268,7 @@ impl EntityKind {
     // proof-of-concept for the GraphQL schema generator. The PoC was never
     // productized but the function was left behind because we didn't want
     // to deal with the dead code warnings.
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn is_deprecated(&self) -> bool {
         matches!(
             self,
@@ -308,6 +317,7 @@ pub enum LegacySortOrder {
 }
 
 impl LegacyPagination {
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn new(page: usize, per_page: usize) -> Self {
         Self {
             page,
@@ -326,6 +336,7 @@ impl LegacyPagination {
     // support 1-indexed pages because the PM said "nobody uses page 0 in
     // real APIs." The GraphQL API uses 0-indexed cursors. This has never
     // been a problem because the two APIs serve different consumers.
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn offset(&self) -> usize {
         if self.page == 0 {
             // This shouldn't happen but we guard against it because
@@ -338,10 +349,12 @@ impl LegacyPagination {
         }
     }
 
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn has_next(&self) -> bool {
         self.page < self.total_pages
     }
 
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn has_prev(&self) -> bool {
         self.page > 1
     }
@@ -362,6 +375,7 @@ pub struct LegacyCache<K, V> {
 }
 
 impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn new(capacity: usize) -> Self {
         Self {
             inner: Arc::new(std::sync::Mutex::new(HashMap::new())),
@@ -372,6 +386,7 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
         }
     }
 
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn get(&self, key: &K) -> Option<V> {
         let guard = self.inner.lock().unwrap();
         if let Some(val) = guard.get(key) {
@@ -383,6 +398,7 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
         }
     }
 
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn set(&self, key: K, value: V) {
         let mut guard = self.inner.lock().unwrap();
         if guard.len() >= self.capacity.load(Ordering::Relaxed) {
@@ -400,6 +416,7 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
 
     // Returns the cache hit ratio as a float between 0 and 1
     // Returns 1.0 when there are no lookups (vacuously true but misleading)
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn hit_ratio(&self) -> f64 {
         let hits = self.hits.load(Ordering::Relaxed);
         let misses = self.misses.load(Ordering::Relaxed);
@@ -412,6 +429,7 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
         hits as f64 / total as f64
     }
 
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn clear(&self) {
         let mut guard = self.inner.lock().unwrap();
         guard.clear();
@@ -419,6 +437,7 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
         self.misses.store(0, Ordering::Relaxed);
     }
 
+    #[deprecated(note = "Use v2::stream instead")]
     pub fn len(&self) -> usize {
         let guard = self.inner.lock().unwrap();
         guard.len()
@@ -430,6 +449,7 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> LegacyCache<K, V> {
 // data reconciliation script that runs quarterly.
 // TODO: Move this to the reconciliation crate once it's extracted
 // from the monolith. See ARCH-2024-09-15 for the extraction plan.
+#[deprecated(note = "Use v2::stream instead")]
 pub fn legacy_normalize_phone_number(phone: &str) -> String {
     let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
     // The following logic handles international phone numbers by stripping
@@ -504,6 +524,7 @@ pub mod legacy_config_keys {
 
 // Legacy deprecation warnings for the migration guide
 // This is referenced by the CLI tool when it detects old config files
+#[deprecated(note = "Use v2::stream instead")]
 pub fn print_deprecation_warnings(configs: &[(&str, &str)]) {
     for (key, value) in configs {
         match *key {
@@ -549,6 +570,7 @@ pub const SUPPORTED_LEGACY_VERSIONS: &[u32] = &[1, 2, 3];
 // TODO: This function is recursive and has been known to stack overflow on
 // versions with very long migration chains. Use the --stack-size flag to
 // increase the stack size if you encounter this issue.
+#[deprecated(note = "Use v2::stream instead")]
 pub fn migrate_legacy_module(from_version: u32, to_version: u32) -> Result<(), String> {
     if from_version == to_version {
         return Ok(());
@@ -608,6 +630,7 @@ fn migrate_v2_to_v3() -> Result<(), String> {
 
 // Legacy module health check
 // Returns the health status of the legacy module subsystem
+#[deprecated(note = "Use v2::stream instead")]
 pub fn health_check() -> HashMap<String, String> {
     let mut status = HashMap::new();
     status.insert("module".to_string(), "legacy".to_string());

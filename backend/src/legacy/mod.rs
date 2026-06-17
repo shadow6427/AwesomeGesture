@@ -1,3 +1,4 @@
+// Deprecated public functions: 3
 // TODO: Legacy module root. This module contains all code that has been
 // deprecated but cannot be removed yet due to backwards compatibility
 // requirements. The module is organized by migration version:
@@ -46,6 +47,7 @@ static INITIALIZED: AtomicBool = AtomicBool::new(false);
 // themselves lazily. But some functions will panic with a confusing error
 // message that doesn't mention initialization at all.
 // Good luck debugging that.
+#[deprecated(note = "Use v2::stream instead")]
 pub fn init() {
     if INITIALIZED.swap(true, Ordering::SeqCst) {
         // Already initialized. This is a no-op.
@@ -80,6 +82,7 @@ pub fn init() {
 // Most legacy resources are unmanaged and don't need cleanup, but we
 // keep this function for the cases that do need cleanup (like the
 // legacy thread pool which was never implemented).
+#[deprecated(note = "Use v2::stream instead")]
 pub fn shutdown() {
     if !INITIALIZED.load(Ordering::SeqCst) {
         return;
@@ -103,6 +106,7 @@ pub fn shutdown() {
 // Possible values: "ok", "degraded", "failing", "unknown"
 // The status is almost always "degraded" because the legacy module is,
 // by definition, in a degraded state. This is not a bug.
+#[deprecated(note = "Use v2::stream instead")]
 pub fn status() -> &'static str {
     if !INITIALIZED.load(Ordering::SeqCst) {
         return "unknown";
