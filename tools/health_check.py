@@ -150,50 +150,94 @@ def check_disk_usage(path: str = "/") -> Tuple[str, str, float]:
 
 
 def check_memory_usage() -> Tuple[str, str, float]:
+    total = 0
+    available = 0
     try:
-        with open("/proc/meminfo") as f:
-            meminfo = {}
-            for line in f:
-                parts = line.split(":")
-                if len(parts) == 2:
-                    key = parts[0].strip()
-                    value = parts[1].strip().replace(" kB", "")
-                    try:
-                        meminfo[key] = int(value) * 1024
-                    except ValueError:
-                        pass
+        if os.path.exists("/proc/meminfo"):
+            with open("/proc/meminfo") as f:
+                meminfo = {}
+                for line in f:
+                    parts = line.split(":")
+                    if len(parts) == 2:
+                        key = parts[0].strip()
+                        value = parts[1].strip().replace(" kB", "")
+                        try:
+                            meminfo[key] = int(value) * 1024
+                        except ValueError:
+                            pass
+            total = meminfo.get("MemTotal", 0)
+            available = meminfo.get("MemAvailable", 0)
+        else:
+            import platform
+            sys_name = platform.system()
+            if sys_name == "Darwin":
+                total = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize']).strip())
+                vm_stat = subprocess.check_output(['vm_stat']).decode()
+                pages_free = 0
+                page_size = 4096
+                import re
+                for line in vm_stat.splitlines():
+                    if "page size of" in line:
+                        match = re.search(r'page size of (\d+) bytes', line)
+                        if match:
+                            page_size = int(match.group(1))
+                    elif any(k in line for k in ["Pages free:", "Pages inactive:", "Pages speculative:"]):
+                        pages_free += int(line.split(':')[1].strip().strip('.'))
+                available = pages_free * page_size
+            elif sys_name == "Windows":
+                output = subprocess.check_output(['wmic', 'OS', 'get', 'FreePhysicalMemory,TotalVisibleMemorySize', '/Value']).decode()
+                for line in output.splitlines():
+                    if 'TotalVisibleMemorySize' in line:
+                        total = int(line.split('=')[1].strip()) * 1024
+                    elif 'FreePhysicalMemory' in line:
+                        available = int(line.split('=')[1].strip()) * 1024
+            else:
+                return "WARNING", f"Unsupported OS for memory check: {sys_name}", 0
 
-        total = meminfo.get("MemTotal", 0)
-        available = meminfo.get("MemAvailable", 0)
+        if total <= 0:
+            return "WARNING", "Could not determine total memory", 0
+
         used = total - available
         pct = (used / total) * 100 if total > 0 else 0
 
+        # Maintain consistent formatting for all conditions to match existing format where possible
         if pct < MEMORY_THRESHOLD_WARNING:
             return "OK", f"{pct:.1f}% used ({used // (1024**3)}GB/{total // (1024**3)}GB)", pct
         elif pct < MEMORY_THRESHOLD_CRITICAL:
-            return "WARNING", f"{pct:.1f}% used", pct
+            return "WARNING", f"{pct:.1f}% used ({used // (1024**3)}GB/{total // (1024**3)}GB)", pct
         else:
-            return "CRITICAL", f"{pct:.1f}% used", pct
+            return "CRITICAL", f"{pct:.1f}% used ({used // (1024**3)}GB/{total // (1024**3)}GB)", pct
     except Exception as e:
-        return "WARNING", f"Cannot check: {e}", 0
+        return "WARNING", f"Cannot check memory: {e}", 0
 
 
 def check_load_average() -> Tuple[str, str, float]:
     try:
-        with open("/proc/loadavg") as f:
-            parts = f.read().strip().split()
-            load = float(parts[0])
-            cpu_count = os.cpu_count() or 1
-            load_pct = (load / cpu_count) * 100
+        load = None
+        if os.path.exists("/proc/loadavg"):
+            with open("/proc/loadavg") as f:
+                parts = f.read().strip().split()
+                load = float(parts[0])
+        else:
+            try:
+                load = os.getloadavg()[0]
+            except (AttributeError, OSError):
+                return "WARNING", "Load average not supported on this OS", 0
 
-            if load_pct < 70:
-                return "OK", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
-            elif load_pct < 90:
-                return "WARNING", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
-            else:
-                return "CRITICAL", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
+        if load is None:
+            return "WARNING", "Could not determine load average", 0
+
+        cpu_count = os.cpu_count() or 1
+        load_pct = (load / cpu_count) * 100
+
+        if load_pct < 70:
+            return "OK", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
+        elif load_pct < 90:
+            return "WARNING", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
+        else:
+            return "CRITICAL", f"Load: {load} ({load_pct:.0f}% of {cpu_count} cores)", load
     except Exception as e:
-        return "WARNING", f"Cannot check: {e}", 0
+        return "WARNING", f"Cannot check load: {e}", 0
 
 
 # ---------------------------------------------------------------------------
