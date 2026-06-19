@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-06-19T04:33:34.671647+00:00",
+  "commit": "bf2147ac",
+  "diagnostic_logd": "diagnostic/build-bf2147ac.logd",
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": "mockpassword123",
+  "decrypt_command": "encryptly unpack diagnostic/build-bf2147ac.logd <outdir> --password mockpassword123",
+  "total_modules": 10,
+  "passed": 4,
+  "failed": 6,
+  "modules": [
+    {
+      "name": "backend",
+      "status": "PASS",
+      "elapsed_seconds": 0.181,
+      "artifact": "/Users/shadow/.hermes/bounties/TentOfTrials/backend/target"
+    },
+    {
+      "name": "frontend",
+      "status": "PASS",
+      "elapsed_seconds": 1.926,
+      "artifact": "/Users/shadow/.hermes/bounties/TentOfTrials/frontend/dist"
+    },
+    {
+      "name": "market",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null
+    },
+    {
+      "name": "frailbox",
+      "status": "FAIL",
+      "elapsed_seconds": 0.041,
+      "artifact": null
+    },
+    {
+      "name": "engine",
+      "status": "PASS",
+      "elapsed_seconds": 0.132,
+      "artifact": "/Users/shadow/.hermes/bounties/TentOfTrials/frailbox/engine/build/trial-engine"
+    },
+    {
+      "name": "compliance",
+      "status": "FAIL",
+      "elapsed_seconds": 0.008,
+      "artifact": null
+    },
+    {
+      "name": "v2-market-stream",
+      "status": "PASS",
+      "elapsed_seconds": 0.049,
+      "artifact": null
+    },
+    {
+      "name": "nfc-scanner",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null
+    },
+    {
+      "name": "openapi-haskell",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null
+    },
+    {
+      "name": "openapi-tools",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null
+    }
+  ],
+  "pr_note": "Include this metadata and diagnostic/build-bf2147ac.logd in your PR. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}
