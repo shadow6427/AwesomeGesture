@@ -7,23 +7,17 @@
  * category, and custom rendering of asset items. It can be used as a
  * dropdown, a modal picker, or an inline selector.
  *
- * The fuzzy search uses a simple substring matching algorithm with
+ * The fuzzy search uses deterministic typo-tolerant matching with
  * prefix priority. Results are ranked by:
  *   - Exact symbol match (highest priority)
  *   - Symbol prefix match
- *   - Name substring match
  *   - Symbol substring match
- *   - Category match (lowest priority)
- *
- * TODO: The fuzzy search doesn't handle typos or partial word matches
- * well. A user searching for "Bitcoin" will find it, but "Bitocin"
- * won't match anything. The search should use Levenshtein distance
- * or trigram similarity for typo tolerance. The search improvement
- * was requested by the customer support team after receiving multiple
- * tickets about "the search not working" which were actually typos.
+ *   - Name prefix and strong substring matches
+ *   - Partial word and one/two-edit typo matches
  */
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { scoreAssetSearch } from './assetSearch';
 
 // ---------------------------------------------------------------------------
 // TYPES
@@ -116,19 +110,11 @@ export function AssetSelector({
     }
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const score = (asset: Asset): number => {
-        const symbol = asset.symbol.toLowerCase();
-        const name = asset.name.toLowerCase();
-        if (symbol === query) return 100;
-        if (symbol.startsWith(query)) return 80;
-        if (symbol.includes(query)) return 60;
-        if (name.startsWith(query)) return 40;
-        if (name.includes(query)) return 20;
-        return 0;
-      };
-      filtered.sort((a, b) => score(b) - score(a));
-      filtered = filtered.filter(a => score(a) > 0);
+      filtered = filtered
+        .map((asset, index) => ({ asset, index, score: scoreAssetSearch(asset, searchQuery) }))
+        .filter(result => result.score > 0)
+        .sort((a, b) => b.score - a.score || a.index - b.index)
+        .map(result => result.asset);
     }
 
     // Group by type
