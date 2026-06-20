@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use tent_backend::discovery::ServiceDiscovery;
+use tent_backend::logging::{log_format_from_env, LogFormat};
 use tent_backend::messaging::MessageBroker;
 use tent_backend::registry::ServiceRegistry;
 use tracing_subscriber::EnvFilter;
@@ -9,7 +10,6 @@ use tracing_subscriber::EnvFilter;
 #[command(name = "tent-backend")]
 #[command(about = "Tent of Trials Backend - Distributed Microservices Framework", long_about = None)]
 struct Cli {
-
     #[arg(short, long, default_value = "node-0")]
     node_id: String,
 
@@ -28,10 +28,16 @@ struct Cli {
 // It's 30 lines of config loading and then it spawns a server.
 // Actually it's like 50 lines. Still too fucking many.
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
-        .json()
-        .init();
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
+    let log_format = log_format_from_env()?;
+
+    match log_format {
+        LogFormat::Text => tracing_subscriber::fmt().with_env_filter(env_filter).init(),
+        LogFormat::Json => tracing_subscriber::fmt()
+            .with_env_filter(env_filter)
+            .json()
+            .init(),
+    }
 
     let cli = Cli::parse();
 
@@ -54,9 +60,7 @@ async fn main() -> Result<()> {
 
     tracing::info!("all subsystems initialized successfully, entering main loop");
 
-    let mut signal = tokio::signal::unix::signal(
-        tokio::signal::unix::SignalKind::terminate(),
-    )?;
+    let mut signal = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
 
     tokio::select! {
         _ = signal.recv() => {

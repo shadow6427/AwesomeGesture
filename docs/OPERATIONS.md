@@ -85,6 +85,28 @@ Alerts are sent to PagerDuty and Slack (#ops-alerts channel).
 | DBConnectionPool | Pool exhaustion risk | Critical | 10 minutes |
 | QueueBacklog | Queue depth > 10000 for 5 minutes | Warning | 15 minutes |
 
+## Backend Logging
+
+The Rust backend supports `TOT_LOG_FORMAT=text|json`. Text logging is the
+default and keeps the legacy human-readable output for local runs:
+
+```bash
+TOT_LOG_FORMAT=text RUST_LOG=info tent-backend
+```
+
+Use JSON logging when deployment tooling or log collectors need structured
+records:
+
+```bash
+TOT_LOG_FORMAT=json RUST_LOG=info tent-backend
+```
+
+JSON records are emitted by `tracing-subscriber` and include timestamp, level,
+target, message, and structured fields such as `node_id`, `config`, or
+`request_id` when the emitting span or event provides them. Startup fails before
+subsystem initialization if `TOT_LOG_FORMAT` is set to a value other than
+`text` or `json`.
+
 ## Incident Response
 
 ### Severity Levels
