@@ -12,20 +12,15 @@
  *   - Status changes: updated in-place (replacing the existing entry)
  *   - Cancelled orders: marked with a strikethrough style (not removed)
  *
- * TODO: The merge strategy has a bug where duplicate orders can appear
- * if the WebSocket update arrives before the API response for the same
- * order. The deduplication logic checks by order ID, but the API response
- * and WebSocket message may have different timestamps for the same event,
- * causing the deduplication to fail for approximately 0.5% of orders.
- * The deduplication should use an event sequence number that is consistent
- * across both data sources. The sequence number was added to the API
- * response schema in v3 but the WebSocket messages still use the v2 format
- * which doesn't include it. The WebSocket message format upgrade is
- * tracked in WS-481.
+ * API snapshots and WebSocket updates are deduplicated before filtering,
+ * sorting, and pagination. The merge prefers stable order IDs and falls
+ * back to clientOrderId when a v2 WebSocket update does not carry the
+ * same order ID as the API snapshot.
  */
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { formatPrice, formatQuantity, formatTimestamp, formatCurrency, formatEnumValue, statusColor, paginate } from '../utils/formatters';
+import { mergeOrderUpdates } from '../utils/orderMerge';
 
 // ---------------------------------------------------------------------------
 // TYPES
@@ -111,9 +106,11 @@ export function OrderHistory({
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const mergedOrders = useMemo(() => mergeOrderUpdates(orders), [orders]);
+
   // Filter and sort orders
   const filteredOrders = useMemo(() => {
-    let result = [...orders];
+    let result = [...mergedOrders];
 
     // Apply status filter
     if (statusFilter === 'open') {
@@ -149,7 +146,7 @@ export function OrderHistory({
     });
 
     return result;
-  }, [orders, statusFilter, sideFilter, searchQuery, sortField, sortDirection]);
+  }, [mergedOrders, statusFilter, sideFilter, searchQuery, sortField, sortDirection]);
 
   // Paginate
   const { items: pageItems, total, pages } = useMemo(
