@@ -124,3 +124,70 @@ export function parseDiagnosticMetadata(jsonText: string): DiagnosticMetadataVie
     modules,
   };
 }
+
+export interface DiagnosticModuleDiff {
+  name: string;
+  isAdded: boolean;
+  isRemoved: boolean;
+  baseline?: DiagnosticModuleRow;
+  candidate?: DiagnosticModuleRow;
+  statusChange: 'RECOVERED' | 'FAILED' | 'UNCHANGED' | 'CHANGED';
+  artifactsChanged: boolean;
+}
+
+export interface DiagnosticMetadataCompareView {
+  baselineSummary: DiagnosticMetadataSummary;
+  candidateSummary: DiagnosticMetadataSummary;
+  moduleDiffs: DiagnosticModuleDiff[];
+}
+
+export function compareDiagnosticMetadata(baselineJSON: string, candidateJSON: string): DiagnosticMetadataCompareView {
+  const baseline = parseDiagnosticMetadata(baselineJSON);
+  const candidate = parseDiagnosticMetadata(candidateJSON);
+
+  const baselineMap = new Map(baseline.modules.map((m) => [m.name, m]));
+  const candidateMap = new Map(candidate.modules.map((m) => [m.name, m]));
+  const allNames = Array.from(new Set([...baselineMap.keys(), ...candidateMap.keys()])).sort();
+
+  const moduleDiffs: DiagnosticModuleDiff[] = allNames.map(name => {
+    const b = baselineMap.get(name);
+    const c = candidateMap.get(name);
+    const isAdded = !b && !!c;
+    const isRemoved = !!b && !c;
+
+    let statusChange: DiagnosticModuleDiff['statusChange'] = 'UNCHANGED';
+    let artifactsChanged = false;
+
+    if (b && c) {
+      if (b.status !== 'PASS' && c.status === 'PASS') {
+        statusChange = 'RECOVERED';
+      } else if (b.status === 'PASS' && c.status !== 'PASS') {
+        statusChange = 'FAILED';
+      } else if (b.status !== c.status) {
+        statusChange = 'CHANGED';
+      }
+
+      const bArtifacts = b.artifactPaths.join('|');
+      const cArtifacts = c.artifactPaths.join('|');
+      if (bArtifacts !== cArtifacts) {
+        artifactsChanged = true;
+      }
+    }
+
+    return {
+      name,
+      isAdded,
+      isRemoved,
+      baseline: b,
+      candidate: c,
+      statusChange,
+      artifactsChanged
+    };
+  });
+
+  return {
+    baselineSummary: baseline.summary,
+    candidateSummary: candidate.summary,
+    moduleDiffs
+  };
+}
