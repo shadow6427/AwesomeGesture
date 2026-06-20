@@ -70,6 +70,31 @@ export interface AssetSelectorProps {
   className?: string;
 }
 
+// Helper for typo tolerance
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  
+  let prevRow = Array.from({ length: b.length + 1 }, (_, i) => i);
+  let currRow = new Array(b.length + 1);
+
+  for (let i = 1; i <= a.length; i++) {
+    currRow[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      currRow[j] = Math.min(
+        currRow[j - 1] + 1,
+        prevRow[j] + 1,
+        prevRow[j - 1] + cost
+      );
+    }
+    const temp = prevRow;
+    prevRow = currRow;
+    currRow = temp;
+  }
+  return prevRow[b.length];
+}
+
 // ---------------------------------------------------------------------------
 // COMPONENT
 // ---------------------------------------------------------------------------
@@ -125,6 +150,24 @@ export function AssetSelector({
         if (symbol.includes(query)) return 60;
         if (name.startsWith(query)) return 40;
         if (name.includes(query)) return 20;
+
+        // Typo tolerance
+        if (query.length >= 3) {
+          const maxDist = query.length <= 4 ? 1 : 2;
+          
+          if (Math.abs(symbol.length - query.length) <= maxDist) {
+            const dist = levenshteinDistance(symbol, query);
+            if (dist <= maxDist) return 15 - dist;
+          }
+          
+          const nameWords = name.split(/\s+/);
+          for (const word of nameWords) {
+            if (Math.abs(word.length - query.length) <= maxDist) {
+              const dist = levenshteinDistance(word, query);
+              if (dist <= maxDist) return 10 - dist;
+            }
+          }
+        }
         return 0;
       };
       filtered.sort((a, b) => score(b) - score(a));
