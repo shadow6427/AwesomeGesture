@@ -15,6 +15,18 @@
 
 ## Monitoring
 
+### Diagnostic Metadata Viewer
+
+The frontend includes a diagnostic metadata viewer at `/diagnostics` for
+reviewing `diagnostic/build-<commit>.json` before attaching build artifacts to a
+PR. Paste the JSON metadata into the viewer to inspect module status, command
+and duration fields when present, artifact paths, failed modules, and missing
+diagnostic artifact warnings.
+
+Use this after running `python3 build.py` and before copying the generated
+`.logd` paths into a bounty submission. The viewer does not upload or persist
+metadata; it only parses the pasted JSON in the browser session.
+
 ### Health Check Endpoints
 
 Each service exposes a health check endpoint:

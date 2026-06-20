@@ -11,6 +11,7 @@ const sidebarSections = [
     items: [
       { label: 'Dashboard', path: '/', icon: '📊' },
       { label: 'Analytics', path: '/analytics', icon: '📈' },
+      { label: 'Diagnostics', path: '/diagnostics', icon: '🧾' },
     ],
   },
   {
