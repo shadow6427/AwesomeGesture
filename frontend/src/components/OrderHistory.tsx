@@ -26,6 +26,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { formatPrice, formatQuantity, formatTimestamp, formatCurrency, formatEnumValue, statusColor, paginate } from '../utils/formatters';
+import { mergeOrders } from '../utils/orderMerge';
 
 // ---------------------------------------------------------------------------
 // TYPES
@@ -113,7 +114,7 @@ export function OrderHistory({
 
   // Filter and sort orders
   const filteredOrders = useMemo(() => {
-    let result = [...orders];
+    let result = mergeOrders(orders);
 
     // Apply status filter
     if (statusFilter === 'open') {
