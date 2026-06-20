@@ -317,26 +317,15 @@ def color(text: str, code: str) -> str:
         return text
     return f"{code}{text}{Colors.RESET}"
 
-def check_prerequisites() -> list[str]:
-    required = {
-        "cargo": "Rust",
-        "npm": "Node.js",
-        "go": "Go",
-        "gcc": "C (GCC)",
-        "g++": "C++ (GCC)",
-        "cmake": "CMake",
-        "make": "Make",
-        "python3": "Python",
-        "javac": "Java (JDK)",
-        "ruby": "Ruby",
-        "luac": "Lua",
-        "ghc": "GHC (Haskell)",
-    }
-
+def check_prerequisites(modules: list[Module]) -> list[tuple[str, str, str]]:
     missing = []
-    for cmd, label in required.items():
+    for m in modules:
+        cmd = m.build_cmd[0]
         if shutil.which(cmd) is None:
-            missing.append(f"{label} ({cmd})")
+            missing.append((m.name, m.language, cmd))
+            
+    if get_encryptly_bin() is None:
+        missing.append(("diagnostics", "tooling", "encryptly (encryption tooling)"))
 
     return missing
 
@@ -529,6 +518,7 @@ def build_diagnostic_report(
     logd_error: Optional[str] = None,
     chunked: bool = False,
     message_blocker: Optional[str] = None,
+    preflight_missing: Optional[list[str]] = None,
 ) -> dict:
     diagnostic_logd: Optional[str | list[str]]
     if not logd_relpaths:
@@ -551,6 +541,7 @@ def build_diagnostic_report(
         "chunked": chunked,
         "chunk_size_bytes": DIAGNOSTIC_CHUNK_SIZE if chunked else None,
         "password": password,
+        "preflight_missing": preflight_missing,
         "decrypt_command": (
             f"encryptly unpack {decrypt_target} <outdir> --password {password}"
             if decrypt_target and password else None
@@ -634,6 +625,7 @@ def commit_diagnostic_artifacts(paths: list[Path], commit_id: str) -> bool:
 def generate_logd(
     results: list[tuple[str, bool, float, str, Optional[str]]],
     verbose: bool = False,
+    preflight_missing: Optional[list[str]] = None,
 ) -> bool:
     logd_path, metadata_path, commit_id = diagnostic_paths_for_commit()
     display_logd = logd_path.relative_to(ROOT)
@@ -642,7 +634,7 @@ def generate_logd(
     # Always write the JSON report first. The encrypted .logd is useful, but the
     # report is required even when the build failed before compilation started or
     # when encryptly itself is unavailable.
-    write_diagnostic_report(metadata_path, build_diagnostic_report(results, commit_id))
+    write_diagnostic_report(metadata_path, build_diagnostic_report(results, commit_id, preflight_missing=preflight_missing))
 
     encryptly_bin = get_encryptly_bin()
     if encryptly_bin is None:
@@ -655,6 +647,7 @@ def generate_logd(
                 commit_id,
                 logd_error=error,
                 message_blocker=ENCRYPTLY_BLOCKER_MESSAGE,
+                preflight_missing=preflight_missing,
             ),
         )
         print(f"    {color('BLOCKER', Colors.RED)} {ENCRYPTLY_BLOCKER_MESSAGE}")
@@ -735,6 +728,7 @@ def generate_logd(
                     commit_id,
                     logd_error=error,
                     message_blocker=ENCRYPTLY_BLOCKER_MESSAGE,
+                    preflight_missing=preflight_missing,
                 ),
             )
             print(f"    {color('BLOCKER', Colors.RED)} {ENCRYPTLY_BLOCKER_MESSAGE}")
@@ -753,6 +747,7 @@ def generate_logd(
                 logd_relpaths=logd_relpaths,
                 password=safe_pw,
                 chunked=len(logd_files) > 1,
+                preflight_missing=preflight_missing,
             ),
         )
 
@@ -853,6 +848,14 @@ Diagnostic bundle:
         "--list", action="store_true",
         help="List available modules and exit",
     )
+    parser.add_argument(
+        "--preflight", action="store_true",
+        help="Run fast preflight dependency checks and exit",
+    )
+    parser.add_argument(
+        "--skip-preflight", action="store_true",
+        help="Skip fast preflight dependency checks before building",
+    )
 
     args = parser.parse_args()
 
@@ -868,17 +871,6 @@ Diagnostic bundle:
             print(f"      build: {' '.join(m.build_cmd)}")
         return 0
 
-    print(f"  {color('Checking prerequisites...', Colors.GRAY)}")
-    missing = check_prerequisites()
-    if missing:
-        print(f"\n  {color('⚠ Some tools missing  -  will try anyway:', Colors.YELLOW)}")
-        for m in missing:
-            print(f"    {m}")
-
-        msg = "Not all modules will build. That's fine."
-        print(f"  {color(msg, Colors.GRAY)}")
-    else:
-        print(f"  {color('✓ All prerequisites found', Colors.GREEN)}")
     if args.module == "all":
         selected = MODULES
     else:
@@ -894,6 +886,24 @@ Diagnostic bundle:
         print(f"  No modules selected.")
         return 0
 
+    if not args.skip_preflight or args.preflight:
+        print(f"  {color('Running preflight checks...', Colors.GRAY)}")
+        missing = check_prerequisites(selected)
+        if missing:
+            print(f"\n  {color('✗ Preflight checks failed. Missing required tools:', Colors.RED)}")
+            missing_msgs = []
+            for name, lang, cmd in missing:
+                msg = f"{name} ({lang}): {cmd}"
+                print(f"    - {msg}")
+                missing_msgs.append(msg)
+            
+            generate_logd([], args.verbose, preflight_missing=missing_msgs)
+            return 1
+        
+        print(f"  {color('✓ Preflight checks passed', Colors.GREEN)}")
+        if args.preflight:
+            generate_logd([], args.verbose, preflight_missing=[])
+            return 0
     if args.clean:
         print(f"\n  {color('Cleaning build artifacts...', Colors.YELLOW)}")
         for module in selected:
