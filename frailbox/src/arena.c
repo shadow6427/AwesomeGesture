@@ -175,8 +175,8 @@ size_t arena_total_capacity(const arena_t *arena) {
 int arena_contains(const arena_t *arena, const void *ptr) {
     arena_region_t *region = arena->regions;
     while (region) {
-        if (ptr >= region->start &&
-            ptr < (char *)region->start + region->size) {
+        if ((const char *)ptr >= (const char *)region->start &&
+            (const char *)ptr < (const char *)region->start + region->size) {
             return 1;
         }
         region = region->next;

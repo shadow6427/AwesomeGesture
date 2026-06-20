@@ -200,6 +200,49 @@ function generateTraceId(): string {
 // CORE API FUNCTIONS
 // ---------------------------------------------------------------------------
 
+class HttpError extends Error {
+  public apiError: ApiError;
+  constructor(apiError: ApiError) {
+    super(apiError.message);
+    this.name = 'HttpError';
+    this.apiError = apiError;
+  }
+}
+
+async function parseErrorResponse(response: Response): Promise<HttpError> {
+  const contentType = response.headers.get('content-type') || '';
+  let body: any = null;
+  let message = response.statusText || 'HTTP Error';
+  let details: Record<string, unknown> | undefined = undefined;
+  let path: string | undefined = undefined;
+
+  try {
+    if (contentType.includes('application/json')) {
+      body = await response.json();
+      message = body.message || message;
+      details = body.details || body;
+      path = body.path;
+    } else {
+      const text = await response.text();
+      message = text || message;
+      details = { responseText: text };
+    }
+  } catch (e) {
+    // Ignore parsing errors
+  }
+
+  const apiError: ApiError = {
+    code: response.status,
+    message,
+    details,
+    requestId: response.headers.get('X-Request-ID') || undefined,
+    path: path || new URL(response.url).pathname,
+    timestamp: new Date().toISOString()
+  };
+
+  return new HttpError(apiError);
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -234,6 +277,10 @@ async function request<T>(
       const response = await fetch(requestConfig.url, requestConfig);
       clearTimeout(timeoutId);
 
+      if (!response.ok) {
+        throw await parseErrorResponse(response);
+      }
+
       const responseData = await parseResponse<T>(response);
 
       // Apply response interceptors
@@ -247,6 +294,9 @@ async function request<T>(
       lastError = error as Error;
 
       if (attempt < maxRetries && method === 'GET') {
+        if (lastError instanceof HttpError && lastError.apiError.code >= 400 && lastError.apiError.code < 500 && lastError.apiError.code !== 429) {
+          break;
+        }
         const delay = RETRY_BASE_DELAY * Math.pow(2, attempt) + Math.random() * 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
@@ -334,6 +384,10 @@ function extractPagination(headers: Headers): PaginationInfo | undefined {
 function normalizeError(error: Error | null): ApiError {
   if (!error) {
     return { code: 0, message: 'Unknown error' };
+  }
+
+  if (error instanceof HttpError) {
+    return error.apiError;
   }
 
   if (error.name === 'AbortError') {
