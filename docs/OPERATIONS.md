@@ -310,3 +310,10 @@ Audit logs are retained for 365 days and include:
 2. Update Kubernetes secret: `kubectl create secret tls tot-tls --cert=new.crt --key=new.key -n tent-production --dry-run=client -o yaml | kubectl apply -f -`
 3. Restart services: `kubectl rollout restart deployment -n tent-production`
 4. Verify new certificate: `openssl s_client -connect api.example.com:443 -servername api.example.com`
+
+**Build Diagnostics Cleanup**
+When debugging build issues, `build.py` automatically generates a `.logd` diagnostic artifact and a `.json` metadata file for each commit. These can accumulate and take up space.
+1. Run `python3 build.py --clean-diagnostics --dry-run` to preview the cleanup.
+2. Run `python3 build.py --clean-diagnostics` to remove old diagnostic bundles.
+3. You can use `--keep N` (default 3) to configure how many of the newest diagnostic bundles are retained.
+4. Note: The `diagnostic/build-00000000.logd` and its JSON metadata stub are *never* deleted by this command.

@@ -631,6 +631,56 @@ def commit_diagnostic_artifacts(paths: list[Path], commit_id: str) -> bool:
     return True
 
 
+def clean_diagnostics(keep: int, dry_run: bool) -> None:
+    if not DIAGNOSTIC_DIR.exists():
+        print(f"  {color('✓', Colors.GREEN)} No diagnostic directory found.")
+        return
+
+    commits = set()
+    for path in DIAGNOSTIC_DIR.glob("build-*.json"):
+        commit = path.stem.replace("build-", "").replace("-metadata", "")
+        if commit != "00000000":
+            commits.add(commit)
+
+    def get_mtime(commit: str) -> float:
+        try:
+            return (DIAGNOSTIC_DIR / f"build-{commit}.json").stat().st_mtime
+        except OSError:
+            return 0.0
+
+    sorted_commits = sorted(list(commits), key=get_mtime, reverse=True)
+    commits_to_remove = sorted_commits[keep:]
+
+    if not commits_to_remove:
+        print(f"  {color('✓', Colors.GREEN)} No stale diagnostics to clean.")
+        return
+
+    print(f"\n  {color('Cleaning stale diagnostics...', Colors.YELLOW)}")
+    removed_count = 0
+    for commit in commits_to_remove:
+        files_to_remove = []
+        files_to_remove.extend(DIAGNOSTIC_DIR.glob(f"build-{commit}.*"))
+        files_to_remove.extend(DIAGNOSTIC_DIR.glob(f"build-{commit}-part*.logd"))
+        
+        for path in files_to_remove:
+            if not path.exists():
+                continue
+            if dry_run:
+                print(f"  {color('▸', Colors.YELLOW)} Would remove {path.relative_to(ROOT)}")
+            else:
+                print(f"  {color('▸', Colors.YELLOW)} Removed {path.relative_to(ROOT)}")
+                try:
+                    path.unlink()
+                    removed_count += 1
+                except Exception as e:
+                    print(f"    {color('✗', Colors.RED)} Failed to remove {path.name}: {e}")
+
+    if dry_run:
+        print(f"\n  {color('Dry run complete.', Colors.GREEN)}")
+    else:
+        print(f"\n  {color(f'Clean complete. Removed {removed_count} files.', Colors.GREEN)}")
+
+
 def generate_logd(
     results: list[tuple[str, bool, float, str, Optional[str]]],
     verbose: bool = False,
@@ -853,6 +903,18 @@ Diagnostic bundle:
         "--list", action="store_true",
         help="List available modules and exit",
     )
+    parser.add_argument(
+        "--clean-diagnostics", action="store_true",
+        help="Clean old diagnostic bundles",
+    )
+    parser.add_argument(
+        "--keep", type=int, default=3,
+        help="Number of newest diagnostic bundles to keep (default: 3)",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Preview what would be removed by --clean-diagnostics",
+    )
 
     args = parser.parse_args()
 
@@ -866,6 +928,10 @@ Diagnostic bundle:
             print(f"    {color(m.name, Colors.CYAN)} ({m.language})")
             print(f"      dir: {m.dir.relative_to(ROOT)}")
             print(f"      build: {' '.join(m.build_cmd)}")
+        return 0
+
+    if args.clean_diagnostics:
+        clean_diagnostics(args.keep, args.dry_run)
         return 0
 
     print(f"  {color('Checking prerequisites...', Colors.GRAY)}")
