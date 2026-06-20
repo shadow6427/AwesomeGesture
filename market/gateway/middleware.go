@@ -41,7 +41,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -113,7 +112,7 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				log.Printf("PANIC: %v\n%s", rec, debug.Stack())
-				writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				writeMiddlewareJSON(w, http.StatusInternalServerError, map[string]interface{}{
 					"error":   "internal_server_error",
 					"message": "An unexpected error occurred",
 				})
@@ -147,7 +146,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		log.Printf("[%s] %s %s %d %s %s",
-			getClientIP(r),
+			middlewareClientIP(r),
 			r.Method,
 			r.URL.Path,
 			rw.statusCode,
@@ -205,7 +204,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := extractToken(r)
 		if token == "" {
-			writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			writeMiddlewareJSON(w, http.StatusUnauthorized, map[string]interface{}{
 				"error":   "unauthorized",
 				"message": "Missing authentication token",
 			})
@@ -215,7 +214,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		// Validate token and extract user info
 		userID, sessionID, err := validateToken(token)
 		if err != nil {
-			writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			writeMiddlewareJSON(w, http.StatusUnauthorized, map[string]interface{}{
 				"error":   "invalid_token",
 				"message": err.Error(),
 			})
@@ -251,7 +250,7 @@ func RateLimitMiddleware(ratePerSecond float64, burst int) func(http.Handler) ht
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := getClientIP(r)
+			key := middlewareClientIP(r)
 			if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
 				key = apiKey
 			}
@@ -276,9 +275,9 @@ func RateLimitMiddleware(ratePerSecond float64, burst int) func(http.Handler) ht
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(reset, 10))
 
 			if !allowed {
-				writeJSON(w, http.StatusTooManyRequests, map[string]interface{}{
-					"error":   "rate_limit_exceeded",
-					"message": "Too many requests. Please slow down.",
+				writeMiddlewareJSON(w, http.StatusTooManyRequests, map[string]interface{}{
+					"error":       "rate_limit_exceeded",
+					"message":     "Too many requests. Please slow down.",
 					"retry_after": reset - time.Now().Unix(),
 				})
 				return
@@ -377,7 +376,7 @@ func CompressMiddleware(next http.Handler) http.Handler {
 // HELPERS
 // ---------------------------------------------------------------------------
 
-func getClientIP(r *http.Request) string {
+func middlewareClientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
 		return strings.TrimSpace(parts[0])
@@ -398,7 +397,7 @@ func generateUUID() string {
 	return hex.EncodeToString(b)
 }
 
-func generateAPIKey() string {
+func generateMiddlewareAPIKey() string {
 	b := make([]byte, 32)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
@@ -428,7 +427,7 @@ func validateToken(token string) (string, string, error) {
 	return "user_stub", "session_stub", nil
 }
 
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+func writeMiddlewareJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
