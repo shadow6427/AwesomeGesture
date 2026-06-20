@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-06-20T18:32:57.829581+00:00",
+  "commit": "32431c7e",
+  "diagnostic_logd": "diagnostic/build-32431c7e.logd",
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": "d3d473b125dea325254d",
+  "decrypt_command": "encryptly unpack diagnostic/build-32431c7e.logd <outdir> --password d3d473b125dea325254d",
+  "total_modules": 10,
+  "passed": 10,
+  "failed": 0,
+  "modules": [
+    {
+      "name": "backend",
+      "status": "PASS",
+      "elapsed_seconds": 22.923,
+      "artifact": "/home/coder/bounty/workspaces/shadow6427-order-history-dedupe/backend/target"
+    },
+    {
+      "name": "frontend",
+      "status": "PASS",
+      "elapsed_seconds": 6.649,
+      "artifact": "/home/coder/bounty/workspaces/shadow6427-order-history-dedupe/frontend/dist"
+    },
+    {
+      "name": "market",
+      "status": "PASS",
+      "elapsed_seconds": 0.765,
+      "artifact": "/home/coder/bounty/workspaces/shadow6427-order-history-dedupe/market/market"
+    },
+    {
+      "name": "frailbox",
+      "status": "PASS",
+      "elapsed_seconds": 0.542,
+      "artifact": "/home/coder/bounty/workspaces/shadow6427-order-history-dedupe/frailbox/frailbox"
+    },
+    {
+      "name": "engine",
+      "status": "PASS",
+      "elapsed_seconds": 21.105,
+      "artifact": "/home/coder/bounty/workspaces/shadow6427-order-history-dedupe/frailbox/engine/build/trial-engine"
+    },
+    {
+      "name": "compliance",
+      "status": "PASS",
+      "elapsed_seconds": 0.704,
+      "artifact": "/home/coder/bounty/workspaces/shadow6427-order-history-dedupe/compliance/build"
+    },
+    {
+      "name": "v2-market-stream",
+      "status": "PASS",
+      "elapsed_seconds": 0.013,
+      "artifact": null
+    },
+    {
+      "name": "nfc-scanner",
+      "status": "PASS",
+      "elapsed_seconds": 0.002,
+      "artifact": null
+    },
+    {
+      "name": "openapi-haskell",
+      "status": "PASS",
+      "elapsed_seconds": 3.947,
+      "artifact": null
+    },
+    {
+      "name": "openapi-tools",
+      "status": "PASS",
+      "elapsed_seconds": 0.004,
+      "artifact": null
+    }
+  ],
+  "pr_note": "Include this metadata and diagnostic/build-32431c7e.logd in your PR. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}
