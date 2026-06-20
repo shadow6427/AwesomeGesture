@@ -87,4 +87,10 @@ mod tests {
             error.to_string()
         );
     }
+
+    #[test]
+    fn displays_log_formats() {
+        assert_eq!("text", LogFormat::Text.to_string());
+        assert_eq!("json", LogFormat::Json.to_string());
+    }
 }

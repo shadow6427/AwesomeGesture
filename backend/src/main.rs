@@ -46,6 +46,7 @@ async fn main() -> Result<()> {
         consensus = %cli.consensus,
         max_connections = %cli.max_connections,
         config = %cli.config,
+        log_format = %log_format,
         "initializing tent backend orchestration framework"
     );
 

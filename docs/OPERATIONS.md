@@ -105,7 +105,8 @@ JSON records are emitted by `tracing-subscriber` and include timestamp, level,
 target, message, and structured fields such as `node_id`, `config`, or
 `request_id` when the emitting span or event provides them. Startup fails before
 subsystem initialization if `TOT_LOG_FORMAT` is set to a value other than
-`text` or `json`.
+`text` or `json`. The selected format is confirmed in the startup log event
+under the `log_format` field.
 
 ## Incident Response
 
