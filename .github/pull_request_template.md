@@ -14,7 +14,7 @@
 
 - [ ] Relevant modules affected by these changes build locally
 - [ ] Tests pass locally
-- [ ] Diagnostic build log is committed in this PR
+- [ ] Diagnostic build log is committed in this PR (Note: The stub `build-00000000.logd` is not accepted, you must run `python3 build.py` to generate a real diagnostic log)
 - [ ] Documentation has been updated, if applicable
 - [ ] Configuration or schema changes are documented, if applicable
 - [ ] No generated build artifacts are committed, except the required diagnostic build log

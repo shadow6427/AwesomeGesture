@@ -98,12 +98,16 @@ jobs:
 
           diagnostic_json_paths = sorted(
               path for path in changed
-              if re.fullmatch(r"diagnostic/build-[0-9a-f]{8}\.json", path)
+              if re.fullmatch(r"diagnostic/build-(?!00000000)[0-9a-f]{8}\.json", path)
           )
           diagnostic_logd_paths = sorted(
               path for path in changed
-              if re.fullmatch(r"diagnostic/build-[0-9a-f]{8}(?:-part\d{3})?\.logd", path)
+              if re.fullmatch(r"diagnostic/build-(?!00000000)[0-9a-f]{8}(?:-part\d{3})?\.logd", path)
           )
+
+          if "diagnostic/build-00000000.logd" in changed:
+              error("The stub diagnostic/build-00000000.logd cannot be submitted as a real diagnostic artifact.", file="diagnostic/build-00000000.logd")
+              sys.exit(1)
 
           if not diagnostic_json_paths:
               error(
