@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-06-20T23:56:16.494881+00:00",
+  "commit": "bf2147ac",
+  "diagnostic_logd": [
+    "diagnostic/build-bf2147ac-part001.logd",
+    "diagnostic/build-bf2147ac-part002.logd"
+  ],
+  "chunked": true,
+  "chunk_size_bytes": 41943040,
+  "password": "5dda2b0b62160eb98da6",
+  "decrypt_command": "encryptly unpack diagnostic/build-bf2147ac.logd <outdir> --password 5dda2b0b62160eb98da6",
+  "total_modules": 10,
+  "passed": 7,
+  "failed": 3,
+  "modules": [
+    {
+      "name": "backend",
+      "status": "PASS",
+      "elapsed_seconds": 12.521,
+      "artifact": "/Users/Shared/tinyops_agent/external_work/AwesomeGesture/backend/target"
+    },
+    {
+      "name": "frontend",
+      "status": "PASS",
+      "elapsed_seconds": 3.336,
+      "artifact": "/Users/Shared/tinyops_agent/external_work/AwesomeGesture/frontend/dist"
+    },
+    {
+      "name": "market",
+      "status": "PASS",
+      "elapsed_seconds": 0.401,
+      "artifact": "/Users/Shared/tinyops_agent/external_work/AwesomeGesture/market/market"
+    },
+    {
+      "name": "frailbox",
+      "status": "FAIL",
+      "elapsed_seconds": 0.047,
+      "artifact": null
+    },
+    {
+      "name": "engine",
+      "status": "PASS",
+      "elapsed_seconds": 5.188,
+      "artifact": "/Users/Shared/tinyops_agent/external_work/AwesomeGesture/frailbox/engine/build/trial-engine"
+    },
+    {
+      "name": "compliance",
+      "status": "FAIL",
+      "elapsed_seconds": 0.009,
+      "artifact": null
+    },
+    {
+      "name": "v2-market-stream",
+      "status": "PASS",
+      "elapsed_seconds": 0.052,
+      "artifact": null
+    },
+    {
+      "name": "nfc-scanner",
+      "status": "PASS",
+      "elapsed_seconds": 0.004,
+      "artifact": null
+    },
+    {
+      "name": "openapi-haskell",
+      "status": "FAIL",
+      "elapsed_seconds": 0,
+      "artifact": null
+    },
+    {
+      "name": "openapi-tools",
+      "status": "PASS",
+      "elapsed_seconds": 0.003,
+      "artifact": null
+    }
+  ],
+  "pr_note": "Include this metadata and diagnostic/build-bf2147ac-part001.logd, diagnostic/build-bf2147ac-part002.logd in your PR. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}

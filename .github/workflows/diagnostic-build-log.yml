@@ -25,31 +25,33 @@ jobs:
 
           echo "Checking PR diff from ${base_sha} to ${head_sha}"
 
-          mapfile -t new_logd < <(
+          mapfile -t added_logd < <(
             git diff --name-only --diff-filter=A "${base_sha}...${head_sha}" -- 'diagnostic/*.logd'
           )
 
-          mapfile -t new_json < <(
+          mapfile -t added_json < <(
             git diff --name-only --diff-filter=A "${base_sha}...${head_sha}" -- 'diagnostic/*.json'
           )
 
-          if [ "${#new_logd[@]}" -eq 0 ]; then
+          if [ "${#added_logd[@]}" -eq 0 ]; then
             echo "::error::This PR must commit a new diagnostic .logd file under diagnostic/."
             exit 1
           fi
 
-          if [ "${#new_json[@]}" -eq 0 ]; then
+          if [ "${#added_json[@]}" -eq 0 ]; then
             echo "::error::This PR must commit a new diagnostic .json file under diagnostic/."
             exit 1
           fi
 
           echo "Found new diagnostic .logd file(s):"
-          printf ' - %s\n' "${new_logd[@]}"
+          printf ' - %s\n' "${added_logd[@]}"
 
           echo "Found new diagnostic .json file(s):"
-          printf ' - %s\n' "${new_json[@]}"
+          printf ' - %s\n' "${added_json[@]}"
 
-          for file in "${new_logd[@]}" "${new_json[@]}"; do
+          json_lookup="$(printf '%s\n' "${added_json[@]}")"
+
+          for file in "${added_logd[@]}" "${added_json[@]}"; do
             if [ ! -f "${file}" ]; then
               echo "::error file=${file}::Diagnostic file path is not a file."
               exit 1
@@ -57,6 +59,43 @@ jobs:
 
             if [ ! -s "${file}" ]; then
               echo "::error file=${file}::Diagnostic file is empty."
+              exit 1
+            fi
+          done
+
+          for file in "${added_logd[@]}"; do
+            if [ "${file}" = "diagnostic/build-00000000.logd" ]; then
+              echo "::error file=${file}::The checked-in stub diagnostic log is not a valid PR diagnostic. Run python3 build.py and commit the generated build-<commit>.logd file."
+              exit 1
+            fi
+
+            if [[ "${file}" =~ ^diagnostic/build-([0-9a-f]{8})(-part[0-9]{3})?\.logd$ ]]; then
+              commit_id="${BASH_REMATCH[1]}"
+            else
+              echo "::error file=${file}::Diagnostic log path must match diagnostic/build-<8-hex>.logd or diagnostic/build-<8-hex>-partNNN.logd."
+              exit 1
+            fi
+
+            if [ "${commit_id}" = "00000000" ]; then
+              echo "::error file=${file}::build-00000000 is the repository stub, not a real build diagnostic."
+              exit 1
+            fi
+
+            metadata_file="diagnostic/build-${commit_id}-metadata.json"
+            if [ ! -f "${metadata_file}" ]; then
+              echo "::error file=${metadata_file}::Missing metadata for ${file}. Commit the matching ${metadata_file} produced by python3 build.py."
+              exit 1
+            fi
+
+            if ! grep -Fxq "${metadata_file}" <<< "${json_lookup}"; then
+              echo "::error file=${metadata_file}::Matching diagnostic metadata must be newly committed with ${file}."
+              exit 1
+            fi
+          done
+
+          for file in "${added_json[@]}"; do
+            if [ "${file}" = "diagnostic/build-00000000-metadata.json" ]; then
+              echo "::error file=${file}::The checked-in stub metadata is not a valid PR diagnostic. Run python3 build.py and commit the generated build-<commit>-metadata.json file."
               exit 1
             fi
           done
