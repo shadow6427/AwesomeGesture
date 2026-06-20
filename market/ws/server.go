@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/tent-of-trials/market/types"
 	"go.uber.org/zap"
 )
+
+var symbolRegex = regexp.MustCompile(`^[A-Z0-9]+-[A-Z0-9]+$`)
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
@@ -190,12 +193,58 @@ func (c *Client) readPump() {
 
 		var event map[string]interface{}
 		if err := json.Unmarshal(message, &event); err != nil {
+			c.sendError(4001, "Invalid request parameters", "", "Invalid JSON")
 			continue
 		}
 
-		c.mu.Lock()
+		eventType, _ := event["type"].(string)
+		if eventType == "auth" {
+			// Authentication stub
+			continue
+		} else if eventType != "subscribe" && eventType != "unsubscribe" {
+			c.sendError(4001, "Invalid request parameters", "type", "Unknown message type")
+			continue
+		}
 
+		symbolStr, _ := event["symbol"].(string)
+		if !symbolRegex.MatchString(symbolStr) {
+			c.sendError(4001, "Invalid request parameters", "symbol", "Unknown instrument symbol")
+			continue
+		}
+
+		sym := types.Symbol(symbolStr)
+
+		c.mu.Lock()
+		if eventType == "subscribe" {
+			if _, exists := c.subs[sym]; exists {
+				c.mu.Unlock()
+				c.sendError(4001, "Invalid request parameters", "symbol", "Duplicate subscription")
+				continue
+			}
+			c.subs[sym] = struct{}{}
+		} else if eventType == "unsubscribe" {
+			delete(c.subs, sym)
+		}
 		c.mu.Unlock()
+	}
+}
+
+func (c *Client) sendError(code int, msg string, field string, reason string) {
+	errResp := map[string]interface{}{
+		"code":    code,
+		"message": msg,
+	}
+	if field != "" || reason != "" {
+		errResp["details"] = map[string]string{
+			"field":  field,
+			"reason": reason,
+		}
+	}
+	if b, err := json.Marshal(errResp); err == nil {
+		select {
+		case c.send <- b:
+		default:
+		}
 	}
 }
 

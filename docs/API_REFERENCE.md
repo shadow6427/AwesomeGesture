@@ -395,3 +395,18 @@ Send an authentication message after connecting:
 | `account.orders` | User's order updates | Real-time |
 | `account.positions` | User's position updates | Real-time |
 | `account.notifications` | User notifications | Real-time |
+
+### Subscription Errors
+
+If a subscription request is invalid, the server will reply with a JSON error message in the standard API format:
+
+```json
+{
+  "code": 4001,
+  "message": "Invalid request parameters",
+  "details": {
+    "field": "symbol",
+    "reason": "Unknown instrument symbol"
+  }
+}
+```
