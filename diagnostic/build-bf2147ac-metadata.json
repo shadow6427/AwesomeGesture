@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-06-21T00:37:43.869747+00:00",
+  "commit": "bf2147ac",
+  "diagnostic_logd": "diagnostic\\build-bf2147ac.logd",
+  "diagnostic_logd_error": "a8e642821cf5e6785d98",
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": null,
+  "decrypt_command": null,
+  "total_modules": 1,
+  "passed": 1,
+  "failed": 0,
+  "modules": [
+    {
+      "name": "compliance",
+      "status": "PASS",
+      "elapsed_seconds": 0.654,
+      "artifact": "C:\\Users\\Adm\\Documents\\Codex\\2026-06-03\\files-mentioned-by-the-user-blog\\work\\awesomegesture-shadow\\compliance\\build"
+    }
+  ],
+  "pr_note": "Include this metadata and diagnostic\\build-bf2147ac.logd in your PR. The logd file is fallback diagnostic evidence because encryptly pack failed."
+}

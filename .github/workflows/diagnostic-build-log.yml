@@ -34,20 +34,19 @@ jobs:
           )
 
           if [ "${#new_logd[@]}" -eq 0 ]; then
-            echo "::error::This PR must commit a new diagnostic .logd file under diagnostic/."
-            exit 1
-          fi
-
-          if [ "${#new_json[@]}" -eq 0 ]; then
-            echo "::error::This PR must commit a new diagnostic .json file under diagnostic/."
+            echo "::error::Bounty submissions must commit at least one new real diagnostic .logd file under diagnostic/. The checked-in stub diagnostic/build-00000000.logd does not count."
             exit 1
           fi
 
           echo "Found new diagnostic .logd file(s):"
           printf ' - %s\n' "${new_logd[@]}"
 
-          echo "Found new diagnostic .json file(s):"
-          printf ' - %s\n' "${new_json[@]}"
+          if [ "${#new_json[@]}" -gt 0 ]; then
+            echo "Found new diagnostic .json file(s):"
+            printf ' - %s\n' "${new_json[@]}"
+          else
+            echo "No new diagnostic .json file was added; this is allowed only when the build did not produce metadata."
+          fi
 
           for file in "${new_logd[@]}" "${new_json[@]}"; do
             if [ ! -f "${file}" ]; then
@@ -60,3 +59,45 @@ jobs:
               exit 1
             fi
           done
+
+          real_logd=()
+          for file in "${new_logd[@]}"; do
+            name="$(basename "${file}")"
+            if [ "${name}" = "build-00000000.logd" ]; then
+              echo "::error file=${file}::diagnostic/build-00000000.logd is a checked-in stub and is not valid PR or payout evidence."
+              exit 1
+            fi
+            if [[ ! "${name}" =~ ^build-[0-9a-f]{8}(-part[0-9]{3})?\.logd$ ]]; then
+              echo "::error file=${file}::Diagnostic .logd files must be named build-<8-hex-commit>.logd or build-<8-hex-commit>-partNNN.logd."
+              exit 1
+            fi
+            real_logd+=("${file}")
+          done
+
+          for file in "${new_json[@]}"; do
+            name="$(basename "${file}")"
+            if [[ "${name}" == build-00000000* ]]; then
+              echo "::error file=${file}::build-00000000 JSON metadata is tied to the stub diagnostic and is not valid PR evidence."
+              exit 1
+            fi
+            if [[ ! "${name}" =~ ^build-[0-9a-f]{8}(-metadata)?\.json$ ]]; then
+              echo "::error file=${file}::Diagnostic JSON files must be named build-<8-hex-commit>.json or build-<8-hex-commit>-metadata.json."
+              exit 1
+            fi
+          done
+
+          for file in "${real_logd[@]}"; do
+            stem="$(basename "${file}" .logd)"
+            if [[ "${stem}" =~ ^(build-[0-9a-f]{8})-part[0-9]{3}$ ]]; then
+              stem="${BASH_REMATCH[1]}"
+            fi
+            if [ -f "diagnostic/${stem}.json" ] || [ -f "diagnostic/${stem}-metadata.json" ]; then
+              continue
+            fi
+            if git diff --name-only "${base_sha}...${head_sha}" -- 'diagnostic/*.json' | grep -q '^diagnostic/'; then
+              echo "::error file=${file}::A matching diagnostic JSON metadata file was produced but none matches ${stem}. Expected diagnostic/${stem}.json or diagnostic/${stem}-metadata.json."
+              exit 1
+            fi
+          done
+
+          echo "Diagnostic submission includes at least one non-stub .logd file."
