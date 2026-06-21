@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-06-20T18:50:27.925992+00:00",
+  "commit": "de0eed22",
+  "diagnostic_logd": "diagnostic/build-de0eed22.logd",
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": "5a426d72af695a3e1ed8",
+  "decrypt_command": "encryptly unpack diagnostic/build-de0eed22.logd <outdir> --password 5a426d72af695a3e1ed8",
+  "total_modules": 10,
+  "passed": 0,
+  "failed": 10,
+  "modules": [
+    {
+      "name": "backend",
+      "status": "FAIL",
+      "elapsed_seconds": 0.018,
+      "artifact": null
+    },
+    {
+      "name": "frontend",
+      "status": "FAIL",
+      "elapsed_seconds": 0.02,
+      "artifact": null
+    },
+    {
+      "name": "market",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    },
+    {
+      "name": "frailbox",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    },
+    {
+      "name": "engine",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    },
+    {
+      "name": "compliance",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    },
+    {
+      "name": "v2-market-stream",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    },
+    {
+      "name": "nfc-scanner",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    },
+    {
+      "name": "openapi-haskell",
+      "status": "FAIL",
+      "elapsed_seconds": 0.021,
+      "artifact": null
+    },
+    {
+      "name": "openapi-tools",
+      "status": "FAIL",
+      "elapsed_seconds": 0.019,
+      "artifact": null
+    }
+  ],
+  "pr_note": "Include this metadata and diagnostic/build-de0eed22.logd in your PR. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}
