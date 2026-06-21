@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-06-21T05:09:28.361606+00:00",
+  "commit": "e5beb603",
+  "diagnostic_logd": "diagnostic/build-e5beb603.logd",
+  "chunked": false,
+  "chunk_size_bytes": null,
+  "password": "6f86ead838c904f6db15",
+  "decrypt_command": "encryptly unpack diagnostic/build-e5beb603.logd <outdir> --password 6f86ead838c904f6db15",
+  "total_modules": 10,
+  "passed": 10,
+  "failed": 0,
+  "modules": [
+    {
+      "name": "backend",
+      "status": "PASS",
+      "elapsed_seconds": 24.385,
+      "artifact": "/home/coder/bounty/workspaces/awesomegesture-pr8/backend/target"
+    },
+    {
+      "name": "frontend",
+      "status": "PASS",
+      "elapsed_seconds": 8.033,
+      "artifact": "/home/coder/bounty/workspaces/awesomegesture-pr8/frontend/dist"
+    },
+    {
+      "name": "market",
+      "status": "PASS",
+      "elapsed_seconds": 0.909,
+      "artifact": "/home/coder/bounty/workspaces/awesomegesture-pr8/market/market"
+    },
+    {
+      "name": "frailbox",
+      "status": "PASS",
+      "elapsed_seconds": 0.676,
+      "artifact": "/home/coder/bounty/workspaces/awesomegesture-pr8/frailbox/frailbox"
+    },
+    {
+      "name": "engine",
+      "status": "PASS",
+      "elapsed_seconds": 22.259,
+      "artifact": "/home/coder/bounty/workspaces/awesomegesture-pr8/frailbox/engine/build/trial-engine"
+    },
+    {
+      "name": "compliance",
+      "status": "PASS",
+      "elapsed_seconds": 0.974,
+      "artifact": "/home/coder/bounty/workspaces/awesomegesture-pr8/compliance/build"
+    },
+    {
+      "name": "v2-market-stream",
+      "status": "PASS",
+      "elapsed_seconds": 0.053,
+      "artifact": null
+    },
+    {
+      "name": "nfc-scanner",
+      "status": "PASS",
+      "elapsed_seconds": 0.003,
+      "artifact": null
+    },
+    {
+      "name": "openapi-haskell",
+      "status": "PASS",
+      "elapsed_seconds": 4.958,
+      "artifact": null
+    },
+    {
+      "name": "openapi-tools",
+      "status": "PASS",
+      "elapsed_seconds": 0.004,
+      "artifact": null
+    }
+  ],
+  "pr_note": "Include this metadata and diagnostic/build-e5beb603.logd in your PR. Maintainers may ask you to remove these diagnostic artifacts before merging."
+}
