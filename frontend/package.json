@@ -7,6 +7,7 @@
     "dev": "vite",
     "test": "node --test src/utils/assetSearch.test.mjs",
     "build": "tsc -b && vite build",
+    "test:order-history": "rm -rf .tmp-order-history-test && tsc --target ES2022 --module ES2022 --moduleResolution bundler --outDir .tmp-order-history-test src/utils/orderMerge.ts && node test-order-history-merge.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
