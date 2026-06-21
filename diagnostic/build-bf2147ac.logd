@@ -1,0 +1,19 @@
+Tent of Trials - fallback diagnostic log
+encryptly pack failed; this plaintext .logd preserves build evidence.
+error: a8e642821cf5e6785d98
+
+Tent of Trials - Build Summary
+==================================================
+generated_at: 2026-06-21T00:37:30.993238+00:00
+total_modules: 1
+passed: 1
+failed: 0
+
+module results:
+  compliance: PASS (0.65s) [C:\Users\Adm\Documents\Codex\2026-06-03\files-mentioned-by-the-user-blog\work\awesomegesture-shadow\compliance\build]
+
+
+==================================================
+compliance (PASS, 0.65s)
+==================================================
+artifact: C:\Users\Adm\Documents\Codex\2026-06-03\files-mentioned-by-the-user-blog\work\awesomegesture-shadow\compliance\build

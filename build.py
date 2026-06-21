@@ -292,15 +292,20 @@ def build_module(
     if module.name == "engine":
 
         build_type = "Release" if release else "Debug"
-        cfg_result = subprocess.run(
-            ["cmake", "-S", ".", "-B", "build",
-             f"-DCMAKE_BUILD_TYPE={build_type}"],
-            cwd=str(module.dir),
-            capture_output=True,
-            text=True,
-            timeout=120,
-            env=env,
-        )
+        try:
+            cfg_result = subprocess.run(
+                ["cmake", "-S", ".", "-B", "build",
+                 f"-DCMAKE_BUILD_TYPE={build_type}"],
+                cwd=str(module.dir),
+                capture_output=True,
+                text=True,
+                timeout=120,
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            return False, time.time() - start, "CMake configure TIMEOUT (120s)"
+        except FileNotFoundError as e:
+            return False, time.time() - start, f"Command not found: {e}"
         if cfg_result.returncode != 0:
             return False, time.time() - start, (
                 f"CMake configure failed:\n{cfg_result.stderr}")
@@ -503,12 +508,54 @@ def generate_logd(
             timeout=300,
         )
         if sr.returncode != 0:
+            error = sr.stderr.strip() or sr.stdout.strip() or "encryptly pack failed"
             print(
                 f"    {color('✗', Colors.RED)} {logd_path.relative_to(ROOT)} creation failed: "
-                f"{sr.stderr.strip() or sr.stdout.strip()}"
+                f"{error}"
             )
-            if logd_path.exists():
-                logd_path.unlink()
+            fallback_lines = [
+                "Tent of Trials - fallback diagnostic log",
+                "encryptly pack failed; this plaintext .logd preserves build evidence.",
+                f"error: {error}",
+                "",
+                (safe_dir / "build-summary.txt").read_text(encoding="utf-8"),
+                "",
+                (safe_dir / "build.log").read_text(encoding="utf-8"),
+            ]
+            logd_path.write_text("\n".join(fallback_lines), encoding="utf-8")
+            logd_relpath = str(logd_path.relative_to(ROOT))
+            metadata = {
+                "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "commit": commit_id,
+                "diagnostic_logd": logd_relpath,
+                "diagnostic_logd_error": error,
+                "chunked": False,
+                "chunk_size_bytes": None,
+                "password": None,
+                "decrypt_command": None,
+                "total_modules": len(results),
+                "passed": sum(1 for _, s, _, _, _ in results if s),
+                "failed": sum(1 for _, s, _, _, _ in results if not s),
+                "modules": [
+                    {
+                        "name": name,
+                        "status": "PASS" if success else "FAIL",
+                        "elapsed_seconds": round(elapsed, 3),
+                        "artifact": binary,
+                    }
+                    for name, success, elapsed, _, binary in results
+                ],
+                "pr_note": (
+                    f"Include this metadata and {logd_relpath} in your PR. "
+                    "The logd file is fallback diagnostic evidence because encryptly pack failed."
+                ),
+            }
+            metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+            print(
+                f"    {color('✓', Colors.GREEN)} fallback {logd_relpath} created "
+                f"({logd_path.stat().st_size / 1024.0:.1f} KiB)"
+            )
+            print(f"    {color('✓', Colors.GREEN)} {metadata_path.relative_to(ROOT)} created")
             return False
 
         safe_pw = sr.stdout.strip()
@@ -659,7 +706,7 @@ Diagnostic bundle:
         print(f"\n  {color('⚠ Some tools missing  -  will try anyway:', Colors.YELLOW)}")
         for m in missing:
             print(f"    {m}")
-        print(f"  {color('Not all modules will build. That\'s fine.', Colors.GRAY)}")
+        print("  " + color("Not all modules will build. That's fine.", Colors.GRAY))
     else:
         print(f"  {color('✓ All prerequisites found', Colors.GREEN)}")
 

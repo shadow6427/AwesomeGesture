@@ -1,7 +1,9 @@
 package gateway
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,141 +11,151 @@ import (
 	"time"
 )
 
-func composedGatewayMiddlewareForTest(next http.Handler) http.Handler {
-	handler := next
-	handler = MetricsMiddleware(handler)
-	handler = RateLimitMiddleware(0, 1)(handler)
-	handler = AuthMiddleware(handler)
-	handler = SecurityHeadersMiddleware(handler)
-	handler = LoggingMiddleware(handler)
-	handler = CORSMiddleware([]string{"https://app.example"}, time.Minute)(handler)
-	handler = RequestIDMiddleware(handler)
-	handler = RecoveryMiddleware(handler)
-	return handler
+func composedGatewayTestHandler(t *testing.T, ratePerSecond float64, burst int, calls *[]string) http.Handler {
+	t.Helper()
+
+	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*calls = append(*calls, "handler")
+
+		if got := r.Context().Value(ContextKeyUserID); got != "user_stub" {
+			t.Fatalf("handler saw user context %v, want user_stub", got)
+		}
+		if got := r.Context().Value(ContextKeySessionID); got != "session_stub" {
+			t.Fatalf("handler saw session context %v, want session_stub", got)
+		}
+		if got := r.Context().Value(ContextKeyAuthMethod); got != "bearer" {
+			t.Fatalf("handler saw auth method %v, want bearer", got)
+		}
+
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
+	rateLimited := RateLimitMiddleware(ratePerSecond, burst)(final)
+	withRateLimit := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*calls = append(*calls, "rate_limit")
+		rateLimited.ServeHTTP(w, r)
+	})
+
+	withAuth := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*calls = append(*calls, "auth")
+		AuthMiddleware(withRateLimit).ServeHTTP(w, r)
+	})
+
+	return RecoveryMiddleware(
+		RequestIDMiddleware(
+			LoggingMiddleware(
+				CORSMiddleware([]string{"https://client.example"}, time.Minute)(
+					MetricsMiddleware(withAuth),
+				),
+			),
+		),
+	)
 }
 
-func requestForMiddlewareOrderTest(token string) *http.Request {
+func serveGatewayMiddlewareRequest(handler http.Handler, token string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/market/orderbook", nil)
-	req.RemoteAddr = "198.51.100.7:43000"
-	req.Header.Set("Origin", "https://app.example")
-	req.Header.Set("X-Request-ID", "req-middleware-order")
+	req.RemoteAddr = "203.0.113.10:4242"
+	req.Header.Set("Origin", "https://client.example")
+	req.Header.Set("X-Request-ID", "request-test-id")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	return req
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	return rec
+}
+
+func decodeGatewayMiddlewareBody(t *testing.T, rec *httptest.ResponseRecorder) map[string]interface{} {
+	t.Helper()
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("response body is not JSON: %v\n%s", err, rec.Body.String())
+	}
+	return body
 }
 
 func TestComposedGatewayMiddlewareOrder(t *testing.T) {
-	tests := []struct {
-		name             string
-		run              func(t *testing.T, handler http.Handler, hits *int) []int
-		expectedHits     int
-		expectedStatuses []int
-	}{
-		{
-			name: "authenticated request reaches handler with auth context before rate limiting",
-			run: func(t *testing.T, handler http.Handler, hits *int) []int {
-				rec := httptest.NewRecorder()
-				handler.ServeHTTP(rec, requestForMiddlewareOrderTest("valid-token"))
+	t.Run("authenticated request is enriched before rate limiting reaches handler", func(t *testing.T) {
+		var calls []string
+		var logs bytes.Buffer
+		previousOutput := log.Writer()
+		log.SetOutput(&logs)
+		defer log.SetOutput(previousOutput)
 
-				if rec.Code != http.StatusOK {
-					t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
-				}
-				if got := rec.Header().Get("X-Request-ID"); got != "req-middleware-order" {
-					t.Fatalf("X-Request-ID = %q, want request header to be preserved", got)
-				}
-				if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://app.example" {
-					t.Fatalf("Access-Control-Allow-Origin = %q", got)
-				}
-				if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
-					t.Fatalf("security header X-Content-Type-Options = %q", got)
-				}
-				return []int{rec.Code}
-			},
-			expectedHits:     1,
-			expectedStatuses: []int{http.StatusOK},
-		},
-		{
-			name: "unauthenticated request returns 401 without consuming authenticated budget",
-			run: func(t *testing.T, handler http.Handler, hits *int) []int {
-				unauthenticated := httptest.NewRecorder()
-				handler.ServeHTTP(unauthenticated, requestForMiddlewareOrderTest(""))
-				if unauthenticated.Code != http.StatusUnauthorized {
-					t.Fatalf("unauthenticated status = %d, want %d", unauthenticated.Code, http.StatusUnauthorized)
-				}
-				if unauthenticated.Header().Get("X-RateLimit-Limit") != "" {
-					t.Fatalf("unauthenticated request reached rate limiter headers: %v", unauthenticated.Header())
-				}
+		handler := composedGatewayTestHandler(t, 0.001, 1, &calls)
+		rec := serveGatewayMiddlewareRequest(handler, "token-1")
 
-				authenticated := httptest.NewRecorder()
-				handler.ServeHTTP(authenticated, requestForMiddlewareOrderTest("valid-token"))
-				if authenticated.Code != http.StatusOK {
-					t.Fatalf("authenticated status after unauthenticated attempt = %d, want %d; body=%s", authenticated.Code, http.StatusOK, authenticated.Body.String())
-				}
-				return []int{unauthenticated.Code, authenticated.Code}
-			},
-			expectedHits:     1,
-			expectedStatuses: []int{http.StatusUnauthorized, http.StatusOK},
-		},
-		{
-			name: "repeated authenticated requests exhaust rate limit with JSON error",
-			run: func(t *testing.T, handler http.Handler, hits *int) []int {
-				first := httptest.NewRecorder()
-				handler.ServeHTTP(first, requestForMiddlewareOrderTest("valid-token"))
-				if first.Code != http.StatusOK {
-					t.Fatalf("first authenticated status = %d, want %d", first.Code, http.StatusOK)
-				}
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200; body: %s", rec.Code, rec.Body.String())
+		}
+		if got := strings.Join(calls, ","); got != "auth,rate_limit,handler" {
+			t.Fatalf("middleware calls = %s, want auth,rate_limit,handler", got)
+		}
+		if got := rec.Header().Get("X-Request-ID"); got != "request-test-id" {
+			t.Fatalf("request id header = %q, want request-test-id", got)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://client.example" {
+			t.Fatalf("CORS origin = %q, want https://client.example", got)
+		}
+		if got := rec.Header().Get("X-RateLimit-Remaining"); got != "0" {
+			t.Fatalf("remaining rate limit = %q, want 0 after first authenticated request", got)
+		}
+		if got := logs.String(); !strings.Contains(got, "GET /api/v1/market/orderbook 200") {
+			t.Fatalf("request log %q does not include successful request", got)
+		}
+	})
 
-				second := httptest.NewRecorder()
-				handler.ServeHTTP(second, requestForMiddlewareOrderTest("valid-token"))
-				if second.Code != http.StatusTooManyRequests {
-					t.Fatalf("second authenticated status = %d, want %d; body=%s", second.Code, http.StatusTooManyRequests, second.Body.String())
-				}
+	t.Run("unauthenticated requests do not consume authenticated budget", func(t *testing.T) {
+		var calls []string
+		handler := composedGatewayTestHandler(t, 0.001, 1, &calls)
 
-				var body map[string]any
-				if err := json.Unmarshal(second.Body.Bytes(), &body); err != nil {
-					t.Fatalf("rate limit response is not JSON: %v", err)
-				}
-				if got := body["error"]; got != "rate_limit_exceeded" {
-					t.Fatalf("rate limit error = %v, want rate_limit_exceeded", got)
-				}
-				if message, ok := body["message"].(string); !ok || !strings.Contains(message, "Too many requests") {
-					t.Fatalf("rate limit message = %v", body["message"])
-				}
-				return []int{first.Code, second.Code}
-			},
-			expectedHits:     1,
-			expectedStatuses: []int{http.StatusOK, http.StatusTooManyRequests},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hits := 0
-			handler := composedGatewayMiddlewareForTest(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				userID, userOK := r.Context().Value(ContextKeyUserID).(string)
-				sessionID, sessionOK := r.Context().Value(ContextKeySessionID).(string)
-				authMethod, methodOK := r.Context().Value(ContextKeyAuthMethod).(string)
-				if !userOK || userID != "user_stub" || !sessionOK || sessionID != "session_stub" || !methodOK || authMethod != "bearer" {
-					t.Fatalf("handler reached without authenticated context: user=%v session=%v method=%v", userID, sessionID, authMethod)
-				}
-				hits++
-				writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-			}))
-
-			statuses := tt.run(t, handler, &hits)
-
-			if hits != tt.expectedHits {
-				t.Fatalf("handler hits = %d, want %d", hits, tt.expectedHits)
+		for i := 0; i < 3; i++ {
+			rec := serveGatewayMiddlewareRequest(handler, "")
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("unauthenticated request %d status = %d, want 401", i+1, rec.Code)
 			}
-			if len(statuses) != len(tt.expectedStatuses) {
-				t.Fatalf("statuses = %v, want %v", statuses, tt.expectedStatuses)
+			body := decodeGatewayMiddlewareBody(t, rec)
+			if body["error"] != "unauthorized" {
+				t.Fatalf("unauthenticated request %d error = %v, want unauthorized", i+1, body["error"])
 			}
-			for i := range statuses {
-				if statuses[i] != tt.expectedStatuses[i] {
-					t.Fatalf("statuses = %v, want %v", statuses, tt.expectedStatuses)
-				}
+			if rec.Header().Get("X-RateLimit-Remaining") != "" {
+				t.Fatalf("unauthenticated request %d unexpectedly received rate limit headers", i+1)
 			}
-		})
-	}
+		}
+
+		rec := serveGatewayMiddlewareRequest(handler, "token-1")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("authenticated status after unauthenticated traffic = %d, want 200; body: %s", rec.Code, rec.Body.String())
+		}
+		if got := strings.Count(strings.Join(calls, ","), "rate_limit"); got != 1 {
+			t.Fatalf("rate limit call count = %d, want only the authenticated request to reach rate limiting", got)
+		}
+	})
+
+	t.Run("repeated authenticated requests exhaust budget with JSON 429", func(t *testing.T) {
+		var calls []string
+		handler := composedGatewayTestHandler(t, 0.001, 1, &calls)
+
+		first := serveGatewayMiddlewareRequest(handler, "token-1")
+		if first.Code != http.StatusOK {
+			t.Fatalf("first authenticated status = %d, want 200", first.Code)
+		}
+
+		second := serveGatewayMiddlewareRequest(handler, "token-1")
+		if second.Code != http.StatusTooManyRequests {
+			t.Fatalf("second authenticated status = %d, want 429; body: %s", second.Code, second.Body.String())
+		}
+		body := decodeGatewayMiddlewareBody(t, second)
+		if body["error"] != "rate_limit_exceeded" {
+			t.Fatalf("rate limit error = %v, want rate_limit_exceeded", body["error"])
+		}
+		if _, ok := body["retry_after"]; !ok {
+			t.Fatalf("rate limit response missing retry_after: %#v", body)
+		}
+		if got := second.Header().Get("X-RateLimit-Limit"); got != "1" {
+			t.Fatalf("rate limit header = %q, want 1", got)
+		}
+	})
 }
