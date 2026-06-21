@@ -1,0 +1,73 @@
+Tent of Trials - fallback diagnostic log
+encryptly pack failed; this plaintext .logd preserves build evidence.
+error: f6edc6d72fc017fc757c
+
+Tent of Trials - Build Summary
+==================================================
+generated_at: 2026-06-21T00:46:48.331877+00:00
+total_modules: 10
+passed: 1
+failed: 9
+
+module results:
+  backend: FAIL (0.00s)
+  frontend: FAIL (0.00s)
+  market: FAIL (0.00s)
+  frailbox: FAIL (0.00s)
+  engine: FAIL (0.00s)
+  compliance: PASS (0.65s) [C:\Users\Adm\Documents\Codex\2026-06-03\files-mentioned-by-the-user-blog\work\awesomegesture-shadow\compliance\build]
+  v2-market-stream: FAIL (0.00s)
+  nfc-scanner: FAIL (0.00s)
+  openapi-haskell: FAIL (0.00s)
+  openapi-tools: FAIL (0.00s)
+
+
+==================================================
+backend (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+frontend (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+market (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+frailbox (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+engine (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+compliance (PASS, 0.65s)
+==================================================
+artifact: C:\Users\Adm\Documents\Codex\2026-06-03\files-mentioned-by-the-user-blog\work\awesomegesture-shadow\compliance\build
+
+==================================================
+v2-market-stream (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+nfc-scanner (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+openapi-haskell (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
+
+==================================================
+openapi-tools (FAIL, 0.00s)
+==================================================
+Command not found: [WinError 2] The system cannot find the file specified
